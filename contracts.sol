@@ -748,7 +748,7 @@ contract CaelumAcceptERC20 is abstractCaelum {
 contract CaelumFundraise is Ownable, BasicToken, abstractCaelum {
 
     /**
-     * In no way is Caelum intended to raise funds. We leave this code to demonstrate the potential and functionallity.
+     * In no way is Caelum intended to raise funds. We leave this code to demonstrate the potential and functionality.
      * Should you decide to buy a masternode instead of mining, you can by using this function. Feel free to consider this a tipping jar for our dev team.
      * We strongly advice to use the `buyMasternode`function, but simply sending Ether to the contract should work as well.
      */
