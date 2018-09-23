@@ -1,309 +1,3 @@
-//solium-disable linebreak-style
-pragma solidity ^0.4.24;
-
-library ExtendedMath {
-    function limitLessThan(uint a, uint b) internal pure returns(uint c) {
-        if (a > b) return b;
-        return a;
-    }
-}
-
-library SafeMath {
-
-    /**
-     * @dev Multiplies two numbers, reverts on overflow.
-     */
-    function mul(uint256 _a, uint256 _b) internal pure returns(uint256) {
-        // Gas optimization: this is cheaper than requiring 'a' not being zero, but the
-        // benefit is lost if 'b' is also tested.
-        // See: https://github.com/OpenZeppelin/openzeppelin-solidity/pull/522
-        if (_a == 0) {
-            return 0;
-        }
-
-        uint256 c = _a * _b;
-        require(c / _a == _b);
-
-        return c;
-    }
-
-    /**
-     * @dev Integer division of two numbers truncating the quotient, reverts on division by zero.
-     */
-    function div(uint256 _a, uint256 _b) internal pure returns(uint256) {
-        require(_b > 0); // Solidity only automatically asserts when dividing by 0
-        uint256 c = _a / _b;
-        // assert(_a == _b * c + _a % _b); // There is no case in which this doesn't hold
-
-        return c;
-    }
-
-    /**
-     * @dev Subtracts two numbers, reverts on overflow (i.e. if subtrahend is greater than minuend).
-     */
-    function sub(uint256 _a, uint256 _b) internal pure returns(uint256) {
-        require(_b <= _a);
-        uint256 c = _a - _b;
-
-        return c;
-    }
-
-    /**
-     * @dev Adds two numbers, reverts on overflow.
-     */
-    function add(uint256 _a, uint256 _b) internal pure returns(uint256) {
-        uint256 c = _a + _b;
-        require(c >= _a);
-
-        return c;
-    }
-
-    /**
-     * @dev Divides two numbers and returns the remainder (unsigned integer modulo),
-     * reverts when dividing by zero.
-     */
-    function mod(uint256 a, uint256 b) internal pure returns(uint256) {
-        require(b != 0);
-        return a % b;
-    }
-}
-
-contract Ownable {
-  address public owner;
-
-
-  event OwnershipRenounced(address indexed previousOwner);
-  event OwnershipTransferred(
-    address indexed previousOwner,
-    address indexed newOwner
-  );
-
-
-  /**
-   * @dev The Ownable constructor sets the original `owner` of the contract to the sender
-   * account.
-   */
-  constructor() public {
-    owner = msg.sender;
-  }
-
-  /**
-   * @dev Throws if called by any account other than the owner.
-   */
-  modifier onlyOwner() {
-    require(msg.sender == owner);
-    _;
-  }
-
-  /**
-   * @dev Allows the current owner to relinquish control of the contract.
-   * @notice Renouncing to ownership will leave the contract without an owner.
-   * It will not be possible to call the functions with the `onlyOwner`
-   * modifier anymore.
-   */
-  function renounceOwnership() public onlyOwner {
-    emit OwnershipRenounced(owner);
-    owner = address(0);
-  }
-
-  /**
-   * @dev Allows the current owner to transfer control of the contract to a newOwner.
-   * @param _newOwner The address to transfer ownership to.
-   */
-  function transferOwnership(address _newOwner) public onlyOwner {
-    _transferOwnership(_newOwner);
-  }
-
-  /**
-   * @dev Transfers control of the contract to a newOwner.
-   * @param _newOwner The address to transfer ownership to.
-   */
-  function _transferOwnership(address _newOwner) internal {
-    require(_newOwner != address(0));
-    emit OwnershipTransferred(owner, _newOwner);
-    owner = _newOwner;
-  }
-}
-
-contract ERC20Basic {
-    function totalSupply() public view returns(uint256);
-
-    function balanceOf(address _who) public view returns(uint256);
-
-    function transfer(address _to, uint256 _value) public returns(bool);
-    event Transfer(address indexed from, address indexed to, uint256 value);
-}
-
-contract ERC20 is ERC20Basic {
-    function allowance(address _owner, address _spender) public view returns(uint256);
-
-    function transferFrom(address _from, address _to, uint256 _value) public returns(bool);
-
-    function approve(address _spender, uint256 _value) public returns(bool);
-
-    event Approval(
-        address indexed owner,
-        address indexed spender,
-        uint256 value
-    );
-}
-
-contract BasicToken is ERC20Basic {
-    using SafeMath
-    for uint256;
-
-    mapping(address => uint256) internal balances;
-
-    uint256 internal totalSupply_;
-
-    /**
-     * @dev Total number of tokens in existence
-     */
-    function totalSupply() public view returns(uint256) {
-        return totalSupply_;
-    }
-
-    /**
-     * @dev Transfer token for a specified address
-     * @param _to The address to transfer to.
-     * @param _value The amount to be transferred.
-     */
-    function transfer(address _to, uint256 _value) public returns(bool) {
-        require(_value <= balances[msg.sender]);
-        require(_to != address(0));
-
-        balances[msg.sender] = balances[msg.sender].sub(_value);
-        balances[_to] = balances[_to].add(_value);
-        emit Transfer(msg.sender, _to, _value);
-        return true;
-    }
-
-    /**
-     * @dev Gets the balance of the specified address.
-     * @param _owner The address to query the the balance of.
-     * @return An uint256 representing the amount owned by the passed address.
-     */
-    function balanceOf(address _owner) public view returns(uint256) {
-        return balances[_owner];
-    }
-
-}
-
-contract StandardToken is ERC20, BasicToken {
-
-    mapping(address => mapping(address => uint256)) internal allowed;
-
-
-    /**
-     * @dev Transfer tokens from one address to another
-     * @param _from address The address which you want to send tokens from
-     * @param _to address The address which you want to transfer to
-     * @param _value uint256 the amount of tokens to be transferred
-     */
-    function transferFrom(
-        address _from,
-        address _to,
-        uint256 _value
-    )
-    public
-    returns(bool) {
-        require(_value <= balances[_from]);
-        require(_value <= allowed[_from][msg.sender]);
-        require(_to != address(0));
-
-        balances[_from] = balances[_from].sub(_value);
-        balances[_to] = balances[_to].add(_value);
-        allowed[_from][msg.sender] = allowed[_from][msg.sender].sub(_value);
-        emit Transfer(_from, _to, _value);
-        return true;
-    }
-
-    /**
-     * @dev Approve the passed address to spend the specified amount of tokens on behalf of msg.sender.
-     * Beware that changing an allowance with this method brings the risk that someone may use both the old
-     * and the new allowance by unfortunate transaction ordering. One possible solution to mitigate this
-     * race condition is to first reduce the spender's allowance to 0 and set the desired value afterwards:
-     * https://github.com/ethereum/EIPs/issues/20#issuecomment-263524729
-     * @param _spender The address which will spend the funds.
-     * @param _value The amount of tokens to be spent.
-     */
-    function approve(address _spender, uint256 _value) public returns(bool) {
-        allowed[msg.sender][_spender] = _value;
-        emit Approval(msg.sender, _spender, _value);
-        return true;
-    }
-
-    /**
-     * @dev Function to check the amount of tokens that an owner allowed to a spender.
-     * @param _owner address The address which owns the funds.
-     * @param _spender address The address which will spend the funds.
-     * @return A uint256 specifying the amount of tokens still available for the spender.
-     */
-    function allowance(
-        address _owner,
-        address _spender
-    )
-    public
-    view
-    returns(uint256) {
-        return allowed[_owner][_spender];
-    }
-
-    /**
-     * @dev Increase the amount of tokens that an owner allowed to a spender.
-     * approve should be called when allowed[_spender] == 0. To increment
-     * allowed value is better to use this function to avoid 2 calls (and wait until
-     * the first transaction is mined)
-     * From MonolithDAO Token.sol
-     * @param _spender The address which will spend the funds.
-     * @param _addedValue The amount of tokens to increase the allowance by.
-     */
-    function increaseApproval(
-        address _spender,
-        uint256 _addedValue
-    )
-    public
-    returns(bool) {
-        allowed[msg.sender][_spender] = (
-            allowed[msg.sender][_spender].add(_addedValue));
-        emit Approval(msg.sender, _spender, allowed[msg.sender][_spender]);
-        return true;
-    }
-
-    /**
-     * @dev Decrease the amount of tokens that an owner allowed to a spender.
-     * approve should be called when allowed[_spender] == 0. To decrement
-     * allowed value is better to use this function to avoid 2 calls (and wait until
-     * the first transaction is mined)
-     * From MonolithDAO Token.sol
-     * @param _spender The address which will spend the funds.
-     * @param _subtractedValue The amount of tokens to decrease the allowance by.
-     */
-    function decreaseApproval(
-        address _spender,
-        uint256 _subtractedValue
-    )
-    public
-    returns(bool) {
-        uint256 oldValue = allowed[msg.sender][_spender];
-        if (_subtractedValue >= oldValue) {
-            allowed[msg.sender][_spender] = 0;
-        } else {
-            allowed[msg.sender][_spender] = oldValue.sub(_subtractedValue);
-        }
-        emit Approval(msg.sender, _spender, allowed[msg.sender][_spender]);
-        return true;
-    }
-
-}
-
-
-
-/**
- * Begin Caelum
- */
-
-
 interface votingContract {
     function getTokenProposalDetails() external view returns(address, uint, uint, uint);
     function getExpiry() external view returns (uint);
@@ -316,6 +10,7 @@ contract abstractCaelum {
     function addMasternode(address _candidate) internal returns(uint);
     function deleteMasternode(uint entityAddress) internal returns(bool success);
     function getLastPerUser(address _candidate) public view returns (uint);
+    function getMiningReward() public view returns(uint);
 }
 
 contract NewMemberProposal is votingContract {
@@ -428,12 +123,21 @@ contract CaelumVotings {
         VOTE_TYPE proposalType;
     }
 
+    struct Voters {
+        bool isVoter;
+        address owner;
+        uint[] votedFor;
+    }
+
     uint MAJORITY_PERCENTAGE_NEEDED = 60;
-    uint MINIMUM_VOTERS_NEEDED = 5;
+    uint MINIMUM_VOTERS_NEEDED = 10;
     bool public proposalPending;
 
     mapping(uint => Proposals) public proposalList;
+    mapping (address => Voters) public voterMap;
+    mapping(uint => address) public voterProposals;
     uint public proposalCounter;
+    uint public votersCount;
 
     /**
      * @notice Define abstract functions for later user
@@ -539,20 +243,6 @@ contract CaelumVotings {
 
 
     /**
-     * Voters section
-     */
-
-    struct Voters {
-        bool isVoter;
-        address owner;
-        uint[] votedFor;
-    }
-
-    mapping (address => Voters) public voterMap;
-    mapping(uint => address) public voterProposals;
-    uint public votersCount;
-
-    /**
      * @dev Allow any masternode user to become a voter.
      */
     function becomeVoter() public  {
@@ -614,7 +304,6 @@ contract CaelumVotings {
 
 }
 
-
 contract CaelumAcceptERC20 is abstractCaelum {
     using SafeMath for uint;
 
@@ -634,6 +323,8 @@ contract CaelumAcceptERC20 is abstractCaelum {
 
     event Deposit(address token, address user, uint amount, uint balance);
     event Withdraw(address token, address user, uint amount, uint balance);
+
+    function getMiningReward() public view returns(uint);
 
 
     /**
@@ -747,6 +438,333 @@ contract CaelumAcceptERC20 is abstractCaelum {
 
         if (!StandardToken(token).transfer(msg.sender, amountToWithdraw)) revert();
         emit Withdraw(token, msg.sender, amountToWithdraw, amountToWithdraw);
+    }
+
+}
+
+contract CaelumMasternode is Ownable, CaelumVotings, CaelumAcceptERC20{
+    using SafeMath for uint;
+
+    bool onTestnet = false;
+    bool genesisAdded = false;
+
+    uint  masternodeRound;
+    uint  masternodeCandidate;
+    uint  masternodeCounter;
+    uint  masternodeEpoch;
+    uint  miningEpoch;
+
+    uint rewardsProofOfWork;
+    uint rewardsMasternode;
+    uint rewardsGlobal = 50 * 1e8;
+
+    uint MINING_PHASE_DURATION_BLOCKS = 4500;
+
+    struct MasterNode {
+        address accountOwner;
+        bool isActive;
+        bool isTeamMember;
+        uint storedIndex;
+        uint startingRound;
+        uint[] indexcounter;
+    }
+
+    uint[] userArray;
+    address[] userAddressArray;
+
+    mapping(uint => MasterNode) userIndexStruct; // UINT masterMapping
+    mapping(address => MasterNode) userAddresCount; //masterMapping
+    mapping(address => uint) userAddressIndex;
+
+    event Deposit(address token, address user, uint amount, uint balance);
+    event Withdraw(address token, address user, uint amount, uint balance);
+
+    event NewMasternode(address candidateAddress, uint timeStamp);
+    event RemovedMasternode(address candidateAddress, uint timeStamp);
+
+    /**
+     * @dev Add the genesis accounts
+     */
+    function addGenesis() public {
+        require(!genesisAdded);
+        addMasternode(msg.sender);
+        updateMasternodeAsTeamMember(msg.sender);
+        genesisAdded = true; // Forever lock this.
+    }
+
+    /**
+     * @dev Add a user as masternode. Called as internal since we only add masternodes by depositing collateral or by voting.
+     * @param _candidate Candidate address
+     * @return uint Masternode index
+     */
+    function addMasternode(address _candidate) internal returns(uint) {
+        userIndexStruct[masternodeCounter].accountOwner = _candidate;
+        userIndexStruct[masternodeCounter].isActive = true;
+        userIndexStruct[masternodeCounter].startingRound = masternodeRound + 1;
+        userIndexStruct[masternodeCounter].storedIndex = masternodeCounter;
+
+        userAddresCount[_candidate].accountOwner = _candidate;
+        userAddresCount[_candidate].indexcounter.push(masternodeCounter);
+
+        userArray.push(userArray.length);
+        masternodeCounter++;
+        return masternodeCounter - 1; //
+    }
+
+    /**
+     * @dev Allow us to update a masternode's round to keep progress
+     * @param _candidate ID of masternode
+     */
+    function updateMasternode(uint _candidate) internal returns(bool) {
+        userIndexStruct[_candidate].startingRound++;
+        return true;
+    }
+
+    /**
+     * @dev Allow us to update a masternode to team member status
+     * @param _member address
+     */
+    function updateMasternodeAsTeamMember(address _member) internal returns (bool) {
+        userAddresCount[_member].isTeamMember = true;
+        return (true);
+    }
+
+    /**
+     * @dev Let us know if an address is part of the team.
+     * @param _member address
+     */
+    function isTeamMember (address _member) public view returns (bool) {
+        if (userAddresCount[_member].isTeamMember)
+        return true;
+    }
+
+    /**
+     * @dev Remove a specific masternode
+     * @param _masternodeID ID of the masternode to remove
+     */
+    function deleteMasternode(uint _masternodeID) internal returns(bool success) {
+
+        uint rowToDelete = userIndexStruct[_masternodeID].storedIndex;
+        uint keyToMove = userArray[userArray.length - 1];
+
+        userIndexStruct[_masternodeID].isActive = userIndexStruct[_masternodeID].isActive = (false);
+        userArray[rowToDelete] = keyToMove;
+        userIndexStruct[keyToMove].storedIndex = rowToDelete;
+        userArray.length = userArray.length - 1;
+
+        removeFromUserCounter(_masternodeID);
+
+        // TODO Why did i comment this out???
+        //delete userIndexStruct[entityAddress];
+        //delete userAddresCount[isPartOf(entityAddress)];
+
+        return true;
+    }
+
+    /**
+     * @dev returns what account belongs to a masternode
+     */
+    function isPartOf(uint mnid) public view returns (address) {
+        return userIndexStruct[mnid].accountOwner;
+    }
+
+    /**
+     * @dev Internal function to remove a masternode from a user address if this address holds multple masternodes
+     * @param index MasternodeID
+     */
+    function removeFromUserCounter(uint index)  internal returns(uint[]) {
+        address belong = isPartOf(index);
+
+        if (index >= userAddresCount[belong].indexcounter.length) return;
+
+        for (uint i = index; i<userAddresCount[belong].indexcounter.length-1; i++){
+            userAddresCount[belong].indexcounter[i] = userAddresCount[belong].indexcounter[i+1];
+        }
+
+        delete userAddresCount[belong].indexcounter[userAddresCount[belong].indexcounter.length-1];
+        userAddresCount[belong].indexcounter.length--;
+        return userAddresCount[belong].indexcounter;
+    }
+
+    /**
+     * @dev Primary contract function to update the current user and prepare the next one.
+     * A number of steps have been token to ensure the contract can never run out of gas when looping over our masternodes.
+     */
+    function setMasternodeCandidate() internal returns(address) {
+
+        uint hardlimitCounter = 0;
+
+        while (getFollowingCandidate() == 0x0) {
+            // We must return a value not to break the contract. Require is a secondary killswitch now.
+            require(hardlimitCounter < 6, "Failsafe switched on");
+            // Choose if loop over revert/require to terminate the loop and return a 0 address.
+            if (hardlimitCounter == 5) return (0);
+            masternodeRound = masternodeRound + 1;
+            masternodeCandidate = 0;
+            hardlimitCounter++;
+        }
+
+        if (masternodeCandidate == masternodeCounter - 1) {
+            masternodeRound = masternodeRound + 1;
+            masternodeCandidate = 0;
+        }
+
+        for (uint i = masternodeCandidate; i < masternodeCounter; i++) {
+            if (userIndexStruct[i].isActive) {
+                if (userIndexStruct[i].startingRound == masternodeRound) {
+                    updateMasternode(i);
+                    masternodeCandidate = i;
+                    return (userIndexStruct[i].accountOwner);
+                }
+            }
+        }
+
+        masternodeRound = masternodeRound + 1;
+        return (0);
+
+    }
+
+    /**
+     * @dev Helper function to loop trough our masternodes at start and return the correct round
+     */
+    function getFollowingCandidate() internal view returns(address _address) {
+        uint tmpRound = masternodeRound;
+        uint tmpCandidate = masternodeCandidate;
+
+        if (tmpCandidate == masternodeCounter - 1) {
+            tmpRound = tmpRound + 1;
+            tmpCandidate = 0;
+        }
+
+        for (uint i = masternodeCandidate; i < masternodeCounter; i++) {
+            if (userIndexStruct[i].isActive) {
+                if (userIndexStruct[i].startingRound == tmpRound) {
+                    tmpCandidate = i;
+                    return (userIndexStruct[i].accountOwner);
+                }
+            }
+        }
+
+        tmpRound = tmpRound + 1;
+        return (0);
+    }
+
+    /**
+     * @dev Displays all masternodes belonging to a user address.
+     */
+    function belongsToUser(address userAddress) public view returns(uint[]) {
+        return (userAddresCount[userAddress].indexcounter);
+    }
+
+    /**
+     * @dev Helper function to know if an address owns masternodes
+     */
+    function isMasternodeOwner(address _candidate) public view returns(bool) {
+        if(userAddresCount[_candidate].indexcounter.length <= 0) return false;
+        if (userAddresCount[_candidate].accountOwner == _candidate)
+        return true;
+    }
+
+    /**
+     * @dev Helper function to get the last masternode belonging to a user
+     */
+    function getLastPerUser(address _candidate) public view returns (uint) {
+        return userAddresCount[_candidate].indexcounter[userAddresCount[_candidate].indexcounter.length - 1];
+    }
+
+
+    /**
+     * @dev Calculate and set the reward schema for Caelum.
+     * Each mining phase is decided by multiplying the MINING_PHASE_DURATION_BLOCKS with factor 10.
+     * Depending on the outcome (solidity always rounds), we can detect the current stage of mining.
+     * First stage we cut the rewards to 5% to prevent instamining.
+     * Last stage we leave 2% for miners to incentivize keeping miners running.
+     */
+    function calculateRewardStructures() internal {
+        //ToDo: Set
+        uint _global_reward_amount = getMiningReward(); //reward();
+        uint getStageOfMining = miningEpoch / MINING_PHASE_DURATION_BLOCKS * 10;
+
+        if (getStageOfMining < 10) {
+            rewardsProofOfWork = _global_reward_amount / 100 * 5;
+            rewardsMasternode = 0;
+            return;
+        }
+
+        if (getStageOfMining > 90) {
+            rewardsProofOfWork = _global_reward_amount / 100 * 2;
+            rewardsMasternode = _global_reward_amount / 100 * 98;
+            return;
+        }
+
+        uint _mnreward = (_global_reward_amount / 100) * getStageOfMining;
+        uint _powreward = (_global_reward_amount - _mnreward);
+
+        setBaseRewards(_powreward, _mnreward);
+    }
+
+    function setBaseRewards(uint _pow, uint _mn) internal {
+        rewardsMasternode = _mn;
+        rewardsProofOfWork = _pow;
+    }
+
+    /**
+     * @dev Executes the masternode flow. Should be called after mining a block.
+     */
+    function _arrangeMasternodeFlow() internal {
+        calculateRewardStructures();
+        setMasternodeCandidate();
+        miningEpoch++;
+    }
+
+    /**
+     * @dev Executes the masternode flow. Should be called after mining a block.
+     * This is an emergency manual loop method.
+     */
+    function _emergencyLoop() onlyOwner public {
+        calculateRewardStructures();
+        setMasternodeCandidate();
+        miningEpoch++;
+    }
+
+    function masternodeInfo(uint index) public view returns
+    (
+        address,
+        bool,
+        uint,
+        uint
+    )
+    {
+        return (
+            userIndexStruct[index].accountOwner,
+            userIndexStruct[index].isActive,
+            userIndexStruct[index].storedIndex,
+            userIndexStruct[index].startingRound
+        );
+    }
+
+    function contractProgress() public view returns
+    (
+        uint epoch,
+        uint candidate,
+        uint round,
+        uint miningepoch,
+        uint globalreward,
+        uint powreward,
+        uint masternodereward,
+        uint usercounter
+    )
+    {
+        return (
+            masternodeEpoch,
+            masternodeCandidate,
+            masternodeRound,
+            miningEpoch,
+            getMiningReward(),
+            rewardsProofOfWork,
+            rewardsMasternode,
+            masternodeCounter
+        );
     }
 
 }
