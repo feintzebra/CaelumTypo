@@ -1,3 +1,306 @@
+//solium-disable linebreak-style
+pragma solidity ^0.4.24;
+
+library ExtendedMath {
+    function limitLessThan(uint a, uint b) internal pure returns(uint c) {
+        if (a > b) return b;
+        return a;
+    }
+}
+
+library SafeMath {
+
+    /**
+     * @dev Multiplies two numbers, reverts on overflow.
+     */
+    function mul(uint256 _a, uint256 _b) internal pure returns(uint256) {
+        // Gas optimization: this is cheaper than requiring 'a' not being zero, but the
+        // benefit is lost if 'b' is also tested.
+        // See: https://github.com/OpenZeppelin/openzeppelin-solidity/pull/522
+        if (_a == 0) {
+            return 0;
+        }
+
+        uint256 c = _a * _b;
+        require(c / _a == _b);
+
+        return c;
+    }
+
+    /**
+     * @dev Integer division of two numbers truncating the quotient, reverts on division by zero.
+     */
+    function div(uint256 _a, uint256 _b) internal pure returns(uint256) {
+        require(_b > 0); // Solidity only automatically asserts when dividing by 0
+        uint256 c = _a / _b;
+        // assert(_a == _b * c + _a % _b); // There is no case in which this doesn't hold
+
+        return c;
+    }
+
+    /**
+     * @dev Subtracts two numbers, reverts on overflow (i.e. if subtrahend is greater than minuend).
+     */
+    function sub(uint256 _a, uint256 _b) internal pure returns(uint256) {
+        require(_b <= _a);
+        uint256 c = _a - _b;
+
+        return c;
+    }
+
+    /**
+     * @dev Adds two numbers, reverts on overflow.
+     */
+    function add(uint256 _a, uint256 _b) internal pure returns(uint256) {
+        uint256 c = _a + _b;
+        require(c >= _a);
+
+        return c;
+    }
+
+    /**
+     * @dev Divides two numbers and returns the remainder (unsigned integer modulo),
+     * reverts when dividing by zero.
+     */
+    function mod(uint256 a, uint256 b) internal pure returns(uint256) {
+        require(b != 0);
+        return a % b;
+    }
+}
+
+contract Ownable {
+  address public owner;
+
+
+  event OwnershipRenounced(address indexed previousOwner);
+  event OwnershipTransferred(
+    address indexed previousOwner,
+    address indexed newOwner
+  );
+
+
+  /**
+   * @dev The Ownable constructor sets the original `owner` of the contract to the sender
+   * account.
+   */
+  constructor() public {
+    owner = msg.sender;
+  }
+
+  /**
+   * @dev Throws if called by any account other than the owner.
+   */
+  modifier onlyOwner() {
+    require(msg.sender == owner);
+    _;
+  }
+
+  /**
+   * @dev Allows the current owner to relinquish control of the contract.
+   * @notice Renouncing to ownership will leave the contract without an owner.
+   * It will not be possible to call the functions with the `onlyOwner`
+   * modifier anymore.
+   */
+  function renounceOwnership() public onlyOwner {
+    emit OwnershipRenounced(owner);
+    owner = address(0);
+  }
+
+  /**
+   * @dev Allows the current owner to transfer control of the contract to a newOwner.
+   * @param _newOwner The address to transfer ownership to.
+   */
+  function transferOwnership(address _newOwner) public onlyOwner {
+    _transferOwnership(_newOwner);
+  }
+
+  /**
+   * @dev Transfers control of the contract to a newOwner.
+   * @param _newOwner The address to transfer ownership to.
+   */
+  function _transferOwnership(address _newOwner) internal {
+    require(_newOwner != address(0));
+    emit OwnershipTransferred(owner, _newOwner);
+    owner = _newOwner;
+  }
+}
+
+contract ERC20Basic {
+    function totalSupply() public view returns(uint256);
+
+    function balanceOf(address _who) public view returns(uint256);
+
+    function transfer(address _to, uint256 _value) public returns(bool);
+    event Transfer(address indexed from, address indexed to, uint256 value);
+}
+
+contract ERC20 is ERC20Basic {
+    function allowance(address _owner, address _spender) public view returns(uint256);
+
+    function transferFrom(address _from, address _to, uint256 _value) public returns(bool);
+
+    function approve(address _spender, uint256 _value) public returns(bool);
+
+    event Approval(
+        address indexed owner,
+        address indexed spender,
+        uint256 value
+    );
+}
+
+contract BasicToken is ERC20Basic {
+    using SafeMath
+    for uint256;
+
+    mapping(address => uint256) internal balances;
+
+    uint256 internal totalSupply_;
+
+    /**
+     * @dev Total number of tokens in existence
+     */
+    function totalSupply() public view returns(uint256) {
+        return totalSupply_;
+    }
+
+    /**
+     * @dev Transfer token for a specified address
+     * @param _to The address to transfer to.
+     * @param _value The amount to be transferred.
+     */
+    function transfer(address _to, uint256 _value) public returns(bool) {
+        require(_value <= balances[msg.sender]);
+        require(_to != address(0));
+
+        balances[msg.sender] = balances[msg.sender].sub(_value);
+        balances[_to] = balances[_to].add(_value);
+        emit Transfer(msg.sender, _to, _value);
+        return true;
+    }
+
+    /**
+     * @dev Gets the balance of the specified address.
+     * @param _owner The address to query the the balance of.
+     * @return An uint256 representing the amount owned by the passed address.
+     */
+    function balanceOf(address _owner) public view returns(uint256) {
+        return balances[_owner];
+    }
+
+}
+
+contract StandardToken is ERC20, BasicToken {
+
+    mapping(address => mapping(address => uint256)) internal allowed;
+
+
+    /**
+     * @dev Transfer tokens from one address to another
+     * @param _from address The address which you want to send tokens from
+     * @param _to address The address which you want to transfer to
+     * @param _value uint256 the amount of tokens to be transferred
+     */
+    function transferFrom(
+        address _from,
+        address _to,
+        uint256 _value
+    )
+    public
+    returns(bool) {
+        require(_value <= balances[_from]);
+        require(_value <= allowed[_from][msg.sender]);
+        require(_to != address(0));
+
+        balances[_from] = balances[_from].sub(_value);
+        balances[_to] = balances[_to].add(_value);
+        allowed[_from][msg.sender] = allowed[_from][msg.sender].sub(_value);
+        emit Transfer(_from, _to, _value);
+        return true;
+    }
+
+    /**
+     * @dev Approve the passed address to spend the specified amount of tokens on behalf of msg.sender.
+     * Beware that changing an allowance with this method brings the risk that someone may use both the old
+     * and the new allowance by unfortunate transaction ordering. One possible solution to mitigate this
+     * race condition is to first reduce the spender's allowance to 0 and set the desired value afterwards:
+     * https://github.com/ethereum/EIPs/issues/20#issuecomment-263524729
+     * @param _spender The address which will spend the funds.
+     * @param _value The amount of tokens to be spent.
+     */
+    function approve(address _spender, uint256 _value) public returns(bool) {
+        allowed[msg.sender][_spender] = _value;
+        emit Approval(msg.sender, _spender, _value);
+        return true;
+    }
+
+    /**
+     * @dev Function to check the amount of tokens that an owner allowed to a spender.
+     * @param _owner address The address which owns the funds.
+     * @param _spender address The address which will spend the funds.
+     * @return A uint256 specifying the amount of tokens still available for the spender.
+     */
+    function allowance(
+        address _owner,
+        address _spender
+    )
+    public
+    view
+    returns(uint256) {
+        return allowed[_owner][_spender];
+    }
+
+    /**
+     * @dev Increase the amount of tokens that an owner allowed to a spender.
+     * approve should be called when allowed[_spender] == 0. To increment
+     * allowed value is better to use this function to avoid 2 calls (and wait until
+     * the first transaction is mined)
+     * From MonolithDAO Token.sol
+     * @param _spender The address which will spend the funds.
+     * @param _addedValue The amount of tokens to increase the allowance by.
+     */
+    function increaseApproval(
+        address _spender,
+        uint256 _addedValue
+    )
+    public
+    returns(bool) {
+        allowed[msg.sender][_spender] = (
+            allowed[msg.sender][_spender].add(_addedValue));
+        emit Approval(msg.sender, _spender, allowed[msg.sender][_spender]);
+        return true;
+    }
+
+    /**
+     * @dev Decrease the amount of tokens that an owner allowed to a spender.
+     * approve should be called when allowed[_spender] == 0. To decrement
+     * allowed value is better to use this function to avoid 2 calls (and wait until
+     * the first transaction is mined)
+     * From MonolithDAO Token.sol
+     * @param _spender The address which will spend the funds.
+     * @param _subtractedValue The amount of tokens to decrease the allowance by.
+     */
+    function decreaseApproval(
+        address _spender,
+        uint256 _subtractedValue
+    )
+    public
+    returns(bool) {
+        uint256 oldValue = allowed[msg.sender][_spender];
+        if (_subtractedValue >= oldValue) {
+            allowed[msg.sender][_spender] = 0;
+        } else {
+            allowed[msg.sender][_spender] = oldValue.sub(_subtractedValue);
+        }
+        emit Approval(msg.sender, _spender, allowed[msg.sender][_spender]);
+        return true;
+    }
+
+}
+
+/**
+ * Begin Caelum
+ */
+
 interface votingContract {
     function getTokenProposalDetails() external view returns(address, uint, uint, uint);
     function getExpiry() external view returns (uint);
@@ -485,7 +788,7 @@ contract CaelumFundraise is Ownable, BasicToken, abstractCaelum {
 
 }
 
-contract CaelumMasternode is Ownable, CaelumVotings, CaelumAcceptERC20{
+contract CaelumMasternode is Ownable, CaelumFundraise, CaelumVotings, CaelumAcceptERC20{
     using SafeMath for uint;
 
     bool onTestnet = false;
@@ -515,8 +818,8 @@ contract CaelumMasternode is Ownable, CaelumVotings, CaelumAcceptERC20{
     uint[] userArray;
     address[] userAddressArray;
 
-    mapping(uint => MasterNode) userIndexStruct; // UINT masterMapping
-    mapping(address => MasterNode) userAddresCount; //masterMapping
+    mapping(uint => MasterNode) userByIndex; // UINT masterMapping
+    mapping(address => MasterNode) userByAddress; //masterMapping
     mapping(address => uint) userAddressIndex;
 
     event Deposit(address token, address user, uint amount, uint balance);
@@ -541,16 +844,18 @@ contract CaelumMasternode is Ownable, CaelumVotings, CaelumAcceptERC20{
      * @return uint Masternode index
      */
     function addMasternode(address _candidate) internal returns(uint) {
-        userIndexStruct[masternodeCounter].accountOwner = _candidate;
-        userIndexStruct[masternodeCounter].isActive = true;
-        userIndexStruct[masternodeCounter].startingRound = masternodeRound + 1;
-        userIndexStruct[masternodeCounter].storedIndex = masternodeCounter;
+        userByIndex[masternodeCounter].accountOwner = _candidate;
+        userByIndex[masternodeCounter].isActive = true;
+        userByIndex[masternodeCounter].startingRound = masternodeRound + 1;
+        userByIndex[masternodeCounter].storedIndex = masternodeCounter;
 
-        userAddresCount[_candidate].accountOwner = _candidate;
-        userAddresCount[_candidate].indexcounter.push(masternodeCounter);
+        userByAddress[_candidate].accountOwner = _candidate;
+        userByAddress[_candidate].indexcounter.push(masternodeCounter);
 
         userArray.push(userArray.length);
         masternodeCounter++;
+
+        emit NewMasternode(_candidate, now);
         return masternodeCounter - 1; //
     }
 
@@ -559,7 +864,7 @@ contract CaelumMasternode is Ownable, CaelumVotings, CaelumAcceptERC20{
      * @param _candidate ID of masternode
      */
     function updateMasternode(uint _candidate) internal returns(bool) {
-        userIndexStruct[_candidate].startingRound++;
+        userByIndex[_candidate].startingRound++;
         return true;
     }
 
@@ -568,7 +873,7 @@ contract CaelumMasternode is Ownable, CaelumVotings, CaelumAcceptERC20{
      * @param _member address
      */
     function updateMasternodeAsTeamMember(address _member) internal returns (bool) {
-        userAddresCount[_member].isTeamMember = true;
+        userByAddress[_member].isTeamMember = true;
         return (true);
     }
 
@@ -577,7 +882,7 @@ contract CaelumMasternode is Ownable, CaelumVotings, CaelumAcceptERC20{
      * @param _member address
      */
     function isTeamMember (address _member) public view returns (bool) {
-        if (userAddresCount[_member].isTeamMember)
+        if (userByAddress[_member].isTeamMember)
         return true;
     }
 
@@ -587,19 +892,17 @@ contract CaelumMasternode is Ownable, CaelumVotings, CaelumAcceptERC20{
      */
     function deleteMasternode(uint _masternodeID) internal returns(bool success) {
 
-        uint rowToDelete = userIndexStruct[_masternodeID].storedIndex;
+        uint rowToDelete = userByIndex[_masternodeID].storedIndex;
         uint keyToMove = userArray[userArray.length - 1];
 
-        userIndexStruct[_masternodeID].isActive = userIndexStruct[_masternodeID].isActive = (false);
+        userByIndex[_masternodeID].isActive = userByIndex[_masternodeID].isActive = (false);
         userArray[rowToDelete] = keyToMove;
-        userIndexStruct[keyToMove].storedIndex = rowToDelete;
+        userByIndex[keyToMove].storedIndex = rowToDelete;
         userArray.length = userArray.length - 1;
 
         removeFromUserCounter(_masternodeID);
 
-        // TODO Why did i comment this out???
-        //delete userIndexStruct[entityAddress];
-        //delete userAddresCount[isPartOf(entityAddress)];
+        emit RemovedMasternode(userByIndex[_masternodeID].accountOwner, now);
 
         return true;
     }
@@ -608,7 +911,7 @@ contract CaelumMasternode is Ownable, CaelumVotings, CaelumAcceptERC20{
      * @dev returns what account belongs to a masternode
      */
     function isPartOf(uint mnid) public view returns (address) {
-        return userIndexStruct[mnid].accountOwner;
+        return userByIndex[mnid].accountOwner;
     }
 
     /**
@@ -618,15 +921,15 @@ contract CaelumMasternode is Ownable, CaelumVotings, CaelumAcceptERC20{
     function removeFromUserCounter(uint index)  internal returns(uint[]) {
         address belong = isPartOf(index);
 
-        if (index >= userAddresCount[belong].indexcounter.length) return;
+        if (index >= userByAddress[belong].indexcounter.length) return;
 
-        for (uint i = index; i<userAddresCount[belong].indexcounter.length-1; i++){
-            userAddresCount[belong].indexcounter[i] = userAddresCount[belong].indexcounter[i+1];
+        for (uint i = index; i<userByAddress[belong].indexcounter.length-1; i++){
+            userByAddress[belong].indexcounter[i] = userByAddress[belong].indexcounter[i+1];
         }
 
-        delete userAddresCount[belong].indexcounter[userAddresCount[belong].indexcounter.length-1];
-        userAddresCount[belong].indexcounter.length--;
-        return userAddresCount[belong].indexcounter;
+        delete userByAddress[belong].indexcounter[userByAddress[belong].indexcounter.length-1];
+        userByAddress[belong].indexcounter.length--;
+        return userByAddress[belong].indexcounter;
     }
 
     /**
@@ -653,11 +956,11 @@ contract CaelumMasternode is Ownable, CaelumVotings, CaelumAcceptERC20{
         }
 
         for (uint i = masternodeCandidate; i < masternodeCounter; i++) {
-            if (userIndexStruct[i].isActive) {
-                if (userIndexStruct[i].startingRound == masternodeRound) {
+            if (userByIndex[i].isActive) {
+                if (userByIndex[i].startingRound == masternodeRound) {
                     updateMasternode(i);
                     masternodeCandidate = i;
-                    return (userIndexStruct[i].accountOwner);
+                    return (userByIndex[i].accountOwner);
                 }
             }
         }
@@ -680,10 +983,10 @@ contract CaelumMasternode is Ownable, CaelumVotings, CaelumAcceptERC20{
         }
 
         for (uint i = masternodeCandidate; i < masternodeCounter; i++) {
-            if (userIndexStruct[i].isActive) {
-                if (userIndexStruct[i].startingRound == tmpRound) {
+            if (userByIndex[i].isActive) {
+                if (userByIndex[i].startingRound == tmpRound) {
                     tmpCandidate = i;
-                    return (userIndexStruct[i].accountOwner);
+                    return (userByIndex[i].accountOwner);
                 }
             }
         }
@@ -696,15 +999,15 @@ contract CaelumMasternode is Ownable, CaelumVotings, CaelumAcceptERC20{
      * @dev Displays all masternodes belonging to a user address.
      */
     function belongsToUser(address userAddress) public view returns(uint[]) {
-        return (userAddresCount[userAddress].indexcounter);
+        return (userByAddress[userAddress].indexcounter);
     }
 
     /**
      * @dev Helper function to know if an address owns masternodes
      */
     function isMasternodeOwner(address _candidate) public view returns(bool) {
-        if(userAddresCount[_candidate].indexcounter.length <= 0) return false;
-        if (userAddresCount[_candidate].accountOwner == _candidate)
+        if(userByAddress[_candidate].indexcounter.length <= 0) return false;
+        if (userByAddress[_candidate].accountOwner == _candidate)
         return true;
     }
 
@@ -712,7 +1015,7 @@ contract CaelumMasternode is Ownable, CaelumVotings, CaelumAcceptERC20{
      * @dev Helper function to get the last masternode belonging to a user
      */
     function getLastPerUser(address _candidate) public view returns (uint) {
-        return userAddresCount[_candidate].indexcounter[userAddresCount[_candidate].indexcounter.length - 1];
+        return userByAddress[_candidate].indexcounter[userByAddress[_candidate].indexcounter.length - 1];
     }
 
 
@@ -779,10 +1082,10 @@ contract CaelumMasternode is Ownable, CaelumVotings, CaelumAcceptERC20{
     )
     {
         return (
-            userIndexStruct[index].accountOwner,
-            userIndexStruct[index].isActive,
-            userIndexStruct[index].storedIndex,
-            userIndexStruct[index].startingRound
+            userByIndex[index].accountOwner,
+            userByIndex[index].isActive,
+            userByIndex[index].storedIndex,
+            userByIndex[index].startingRound
         );
     }
 
@@ -810,4 +1113,205 @@ contract CaelumMasternode is Ownable, CaelumVotings, CaelumAcceptERC20{
         );
     }
 
+}
+
+contract CaelumMiner is StandardToken, CaelumVotings, CaelumMasternode {
+    using SafeMath for uint;
+    using ExtendedMath for uint;
+
+    string public symbol;
+    string public name;
+    uint8 public decimals;
+    uint256 public totalSupply;
+
+    uint public latestDifficultyPeriodStarted;
+    uint public epochCount;
+    uint public baseMiningReward = 50;
+    uint public blocksPerReadjustment = 512;
+    uint public _MINIMUM_TARGET = 2 ** 16;
+    uint public _MAXIMUM_TARGET = 2 ** 234;
+    uint public rewardEra = 0;
+
+    uint public maxSupplyForEra;
+    uint public MAX_REWARD_ERA = 39;
+    uint public MINING_RATE_FACTOR = 60; //mint the token 60 times less often than ether
+    //difficulty adjustment parameters- be careful modifying these
+    uint public MAX_ADJUSTMENT_PERCENT = 100;
+    uint public TARGET_DIVISOR = 2000;
+    uint public QUOTIENT_LIMIT = TARGET_DIVISOR.div(2);
+    mapping(bytes32 => bytes32) solutionForChallenge;
+    mapping(address => mapping(address => uint)) allowed;
+
+    bytes32 public challengeNumber;
+    uint public difficulty;
+    uint public tokensMinted;
+
+
+    struct Statistics {
+        address lastRewardTo;
+        uint lastRewardAmount;
+        uint lastRewardEthBlockNumber;
+        uint lastRewardTimestamp;
+    }
+
+    Statistics public statistics;
+    event Mint(address indexed from, uint reward_amount, uint epochCount, bytes32 newChallengeNumber);
+
+    constructor() public {
+        symbol = "CLM"; // Change before live; This is to prevent a flood of the real token name on ropsten.
+        name = "Caelum Token"; // Change before live; This is to prevent a flood of the real token name on ropsten.
+        decimals = 8;
+        totalSupply = 2100000000000000;
+        tokensMinted = 0;
+        maxSupplyForEra = totalSupply.div(2);
+        difficulty = _MAXIMUM_TARGET;
+        latestDifficultyPeriodStarted = block.number;
+        _newEpoch(0);
+
+        balances[msg.sender] = balances[msg.sender].add(420000 * 1e8); // 2% Premine as determined by the community meeting.
+        emit Transfer(this, msg.sender, 420000 * 1e8);
+    }
+
+    function mint(uint256 nonce, bytes32 challenge_digest) public returns(bool success) {
+        // perform the hash function validation
+        _hash(nonce, challenge_digest);
+
+        _arrangeMasternodeFlow();
+
+        uint rewardAmount = _reward();
+        uint rewardMasternode = _reward_masternode();
+
+        tokensMinted += rewardAmount.add(rewardMasternode);
+
+        uint epochCounter = _newEpoch(nonce);
+
+        _adjustDifficulty();
+
+        statistics = Statistics(msg.sender, rewardAmount, block.number, now);
+
+        emit Mint(msg.sender, rewardAmount, epochCounter, challengeNumber);
+
+        return true;
+    }
+
+    function _newEpoch(uint256 nonce) internal returns(uint) {
+
+        if (tokensMinted.add(getMiningReward()) > maxSupplyForEra && rewardEra < MAX_REWARD_ERA) {
+            rewardEra = rewardEra + 1;
+        }
+        maxSupplyForEra = totalSupply - totalSupply.div(2 ** (rewardEra + 1));
+        epochCount = epochCount.add(1);
+        challengeNumber = blockhash(block.number - 1);
+    }
+
+    function _hash(uint256 nonce, bytes32 challenge_digest) internal returns(bytes32 digest) {
+        digest = keccak256(challengeNumber, msg.sender, nonce);
+        if (digest != challenge_digest) revert();
+        if (uint256(digest) > difficulty) revert();
+        bytes32 solution = solutionForChallenge[challengeNumber];
+        solutionForChallenge[challengeNumber] = digest;
+        if (solution != 0x0) revert(); //prevent the same answer from awarding twice
+    }
+
+    function _reward() internal returns(uint) {
+
+        uint _pow = rewardsProofOfWork;
+
+        balances[msg.sender] = balances[msg.sender].add(_pow);
+        emit Transfer(this, msg.sender, _pow);
+
+        return _pow;
+    }
+
+    function _reward_masternode() internal returns(uint) {
+
+        uint _mnReward = rewardsMasternode;
+        if (masternodeCounter == 0) return 0;
+
+        address _mnCandidate = userByIndex[masternodeCandidate].accountOwner;
+        if (_mnCandidate == 0x0) return 0;
+
+        balances[_mnCandidate] = balances[_mnCandidate].add(_mnReward);
+        emit Transfer(this, _mnCandidate, _mnReward);
+
+        //emit RewardMasternode(_mnCandidate, _mnReward);
+
+        return _mnReward;
+    }
+
+
+    //DO NOT manually edit this method unless you know EXACTLY what you are doing
+    function _adjustDifficulty() internal returns(uint) {
+        //every so often, readjust difficulty. Dont readjust when deploying
+        if (epochCount % blocksPerReadjustment != 0) {
+            return difficulty;
+        }
+
+        uint ethBlocksSinceLastDifficultyPeriod = block.number - latestDifficultyPeriodStarted;
+        //assume 360 ethereum blocks per hour
+        //we want miners to spend 10 minutes to mine each 'block', about 60 ethereum blocks = one 0xbitcoin epoch
+        uint epochsMined = blocksPerReadjustment;
+        uint targetEthBlocksPerDiffPeriod = epochsMined * MINING_RATE_FACTOR;
+        //if there were less eth blocks passed in time than expected
+        if (ethBlocksSinceLastDifficultyPeriod < targetEthBlocksPerDiffPeriod) {
+            uint excess_block_pct = (targetEthBlocksPerDiffPeriod.mul(MAX_ADJUSTMENT_PERCENT)).div(ethBlocksSinceLastDifficultyPeriod);
+            uint excess_block_pct_extra = excess_block_pct.sub(100).limitLessThan(QUOTIENT_LIMIT);
+            // If there were 5% more blocks mined than expected then this is 5.  If there were 100% more blocks mined than expected then this is 100.
+            //make it harder
+            difficulty = difficulty.sub(difficulty.div(TARGET_DIVISOR).mul(excess_block_pct_extra)); //by up to 50 %
+        } else {
+            uint shortage_block_pct = (ethBlocksSinceLastDifficultyPeriod.mul(MAX_ADJUSTMENT_PERCENT)).div(targetEthBlocksPerDiffPeriod);
+            uint shortage_block_pct_extra = shortage_block_pct.sub(100).limitLessThan(QUOTIENT_LIMIT); //always between 0 and 1000
+            //make it easier
+            difficulty = difficulty.add(difficulty.div(TARGET_DIVISOR).mul(shortage_block_pct_extra)); //by up to 50 %
+        }
+        latestDifficultyPeriodStarted = block.number;
+        if (difficulty < _MINIMUM_TARGET) //very difficult
+        {
+            difficulty = _MINIMUM_TARGET;
+        }
+        if (difficulty > _MAXIMUM_TARGET) //very easy
+        {
+            difficulty = _MAXIMUM_TARGET;
+        }
+    }
+    //this is a recent ethereum block hash, used to prevent pre-mining future blocks
+    function getChallengeNumber() public view returns(bytes32) {
+        return challengeNumber;
+    }
+    //the number of zeroes the digest of the PoW solution requires.  Auto adjusts
+    function getMiningDifficulty() public view returns(uint) {
+        return _MAXIMUM_TARGET.div(difficulty);
+    }
+
+    function getMiningTarget() public view returns(uint) {
+        return difficulty;
+    }
+
+    function getMiningReward() public view returns(uint) {
+        return (baseMiningReward * 1e8).div(2 ** rewardEra);
+    }
+
+    //help debug mining software
+    function getMintDigest(
+        uint256 nonce,
+        bytes32 challenge_digest,
+        bytes32 challenge_number
+    )
+    public view returns(bytes32 digesttest) {
+        bytes32 digest = keccak256(challenge_number, msg.sender, nonce);
+        return digest;
+    }
+    //help debug mining software
+    function checkMintSolution(
+        uint256 nonce,
+        bytes32 challenge_digest,
+        bytes32 challenge_number,
+        uint testTarget
+    )
+    public view returns(bool success) {
+        bytes32 digest = keccak256(challenge_number, msg.sender, nonce);
+        if (uint256(digest) > testTarget) revert();
+        return (digest == challenge_digest);
+    }
 }
