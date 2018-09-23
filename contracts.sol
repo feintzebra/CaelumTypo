@@ -35,7 +35,7 @@ contract NewMemberProposal is votingContract {
     }
 
     /**
-     * @dev Retuns all details about this proposal
+     * @dev Returns all details about this proposal
      */
     function getTokenProposalDetails() public view returns(address, uint, uint, uint) {
         return (memberAddress, totalMasternodes, 0, uint(contractType));
@@ -260,7 +260,7 @@ contract CaelumVotings {
 
     /**
      * @dev Allow voters to submit their vote on a proposal. Voters can only cast 1 vote per proposal.
-     * If the proposed vote is about adding Team members, only Team members are able to vote.
+     * If the proposed vote is about adding team members, only team members are able to vote.
      * A proposal can only be published if the total of votes is greater then MINIMUM_VOTERS_NEEDED.
      * @param uint proposalID
      */
