@@ -122,7 +122,7 @@ contract CaelumVotings {
         VOTE_TYPE proposalType;
     }
 
-    uint PERCENTAGE_MAJORITY = 60;
+    uint MAJORITY_PERCENTAGE_NEEDED = 60;
     uint MINIMUM_VOTERS_NEEDED = 5;
     bool public proposalPending;
 
@@ -172,7 +172,7 @@ contract CaelumVotings {
         uint _required;
         uint _valid;
         uint _type;
-        (_address, _required, _valid, _type) = getTokenProposalStuff(_ID);
+        (_address, _required, _valid, _type) = getTokenProposalDetails(_ID);
 
         if(_type == uint(VOTE_TYPE.TOKEN)) {
             addToWhitelist(_address,_required,_valid);
@@ -217,7 +217,7 @@ contract CaelumVotings {
     /**
      * @dev Returns all details about a proposal
      */
-    function getTokenProposalStuff(uint proposalID) public view returns(address, uint, uint, uint) {
+    function getTokenProposalDetails(uint proposalID) public view returns(address, uint, uint, uint) {
         return votingContract(proposalList[proposalID].tokenContract).getTokenProposalDetails();
     }
 
@@ -243,7 +243,7 @@ contract CaelumVotings {
     }
 
     mapping (address => Voters) public voterMap;
-    mapping(uint => address) public someStupid;
+    mapping(uint => address) public voterProposals;
     uint public votersCount;
 
     /**
@@ -268,14 +268,14 @@ contract CaelumVotings {
         require(voterMap[msg.sender].isVoter, "Sender not listed as voter");
         require(proposalID >= 0, "No proposal was selected.");
         require(proposalID <= proposalCounter, "Proposal out of limits.");
-        require(someStupid[proposalID] != msg.sender, "Already voted.");
+        require(voterProposals[proposalID] != msg.sender, "Already voted.");
         require(votersCount >= MINIMUM_VOTERS_NEEDED, "Not enough voters in existence to push a proposal");
 
         if(proposalList[proposalID].proposalType == VOTE_TYPE.TEAM) {
             require (isTeamMember(msg.sender), "Restricted for team members");
         }
 
-        someStupid[proposalID] = msg.sender;
+        voterProposals[proposalID] = msg.sender;
         proposalList[proposalID].totalVotes++;
 
         if(reachedMajority(proposalID)) {
@@ -302,7 +302,7 @@ contract CaelumVotings {
      * @return uint Total of votes needed for majority
      */
     function majority () internal view returns (uint) {
-        uint a = (votersCount * PERCENTAGE_MAJORITY );
+        uint a = (votersCount * MAJORITY_PERCENTAGE_NEEDED );
         return a / 100;
     }
 
